@@ -1,5 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { prisma } from '../db.js';
+import { prisma } from '../db';
 import type { User, InterviewSession } from '@prisma/client';
 
 export interface AuthContext {

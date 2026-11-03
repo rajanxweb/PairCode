@@ -1,0 +1,207 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum SessionStatus {
+  WAITING
+  ACTIVE
+  COMPLETED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ExecutionKind {
+  RUN
+  SUBMIT
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum CaseStatus {
+  ACCEPTED
+  WRONG_ANSWER
+  COMPILATION_ERROR
+  RUNTIME_ERROR
+  TIME_LIMIT_EXCEEDED
+  MEMORY_LIMIT_EXCEEDED
+  FAILED
+}
+
+model User {
+  id          String   @id @default(cuid())
+  clerkUserId String   @unique
+  email       String   @unique
+  name        String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hostedSessions    InterviewSession[] @relation("InterviewerSessions")
+  candidateSessions InterviewSession[] @relation("CandidateSessions")
+  interviewNotes    InterviewNote[]
+  executions        Execution[]
+
+  @@index([clerkUserId])
+  @@index([email])
+}
+
+model Question {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String
+  statement   String     @db.Text
+  difficulty  Difficulty
+  topics      String[]
+  constraints String[]
+  examples    Json
+  starterCode Json
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  testCases TestCase[]
+  sessions  InterviewSession[]
+
+  @@index([slug])
+  @@index([difficulty])
+}
+
+model TestCase {
+  id             String   @id @default(cuid())
+  questionId     String
+  input          String   @db.Text
+  expectedOutput String   @db.Text
+  isHidden       Boolean  @default(false)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  caseResults ExecutionCaseResult[]
+
+  @@index([questionId])
+  @@index([questionId, isHidden])
+}
+
+model InterviewSession {
+  id               String        @id @default(cuid())
+  roomCode         String        @unique
+  title            String
+  status           SessionStatus @default(WAITING)
+  interviewerId    String
+  candidateId      String?
+  questionId       String
+  durationSeconds  Int           @default(3600)
+  startedAt        DateTime?
+  endsAt           DateTime?
+  endedAt          DateTime?
+  inviteTokenHash  String        @unique
+  inviteExpiresAt  DateTime
+  inviteAcceptedAt DateTime?
+  finalCode        String?       @db.Text
+  finalLanguage    String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  interviewer User       @relation("InterviewerSessions", fields: [interviewerId], references: [id], onDelete: Cascade)
+  candidate   User?      @relation("CandidateSessions", fields: [candidateId], references: [id], onDelete: SetNull)
+  question    Question   @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  yjsDocument    YjsDocument?
+  interviewNotes InterviewNote[]
+  executions     Execution[]
+
+  @@index([roomCode])
+  @@index([status])
+  @@index([interviewerId])
+  @@index([candidateId])
+  @@index([inviteTokenHash])
+}
+
+model YjsDocument {
+  id        String   @id @default(cuid())
+  sessionId String   @unique
+  state     Bytes
+  updatedAt DateTime @updatedAt
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model InterviewNote {
+  id            String   @id @default(cuid())
+  sessionId     String
+  interviewerId String
+  content       Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  session     InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  interviewer User             @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, interviewerId])
+  @@index([sessionId])
+  @@index([interviewerId])
+}
+
+model Execution {
+  id                String          @id @default(cuid())
+  sessionId         String
+  requestedByUserId String
+  kind              ExecutionKind
+  language          String
+  sourceCode        String          @db.Text
+  stdin             String?         @db.Text
+  status            ExecutionStatus @default(PENDING)
+  totalPassed       Int             @default(0)
+  totalFailed       Int             @default(0)
+  errorMessage      String?         @db.Text
+  claimedAt         DateTime?
+  attemptCount      Int             @default(0)
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime        @default(now())
+
+  session     InterviewSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  requestedBy User                @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  caseResults ExecutionCaseResult[]
+
+  @@index([sessionId])
+  @@index([status, createdAt])
+  @@index([requestedByUserId])
+}
+
+model ExecutionCaseResult {
+  id              String     @id @default(cuid())
+  executionId     String
+  testCaseId      String?
+  caseNumber      Int
+  isHidden        Boolean    @default(false)
+  status          CaseStatus
+  stdout          String?    @db.Text
+  stderr          String?    @db.Text
+  executionTimeMs Float?
+  memoryKb        Int?
+  createdAt       DateTime   @default(now())
+
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  testCase  TestCase? @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+
+  @@index([executionId])
+  @@index([testCaseId])
+}
+

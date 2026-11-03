@@ -1,0 +1,29 @@
+{
+  "name": "paircode-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time collaborative technical coding interview platform",
+  "scripts": {
+    "dev": "concurrently -n \"web,realtime,worker\" -c \"blue,green,magenta\" \"pnpm --filter @paircode/web dev\" \"pnpm --filter @paircode/realtime dev\" \"pnpm --filter @paircode/worker dev\"",
+    "build": "pnpm --filter @paircode/shared build && pnpm --filter @paircode/realtime build && pnpm --filter @paircode/worker build && pnpm --filter @paircode/web build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "vitest run",
+    "test:integration": "vitest run --dir tests/integration",
+    "test:realtime": "vitest run --dir tests/realtime",
+    "test:e2e": "playwright test",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:generate": "prisma generate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prisma": "^6.4.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7",
+    "@types/node": "^22.13.5"
+  },
+  "packageManager": "pnpm@12.16.1"
+}
+

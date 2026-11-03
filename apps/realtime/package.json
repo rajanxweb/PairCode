@@ -1,0 +1,28 @@
+{
+  "name": "@paircode/realtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsc -w",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo '@paircode/realtime: lint ok'"
+  },
+  "dependencies": {
+    "@hocuspocus/server": "^2.15.0",
+    "@paircode/shared": "workspace:*",
+    "@prisma/client": "^6.4.1",
+    "dotenv": "^16.4.7",
+    "jsonwebtoken": "^9.0.2",
+    "yjs": "^13.6.23"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3"
+  }
+}
+

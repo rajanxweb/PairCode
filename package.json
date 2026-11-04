@@ -21,12 +21,15 @@
     "@prisma/client": "^6.4.1"
   },
   "devDependencies": {
+    "@hocuspocus/provider": "^2.15.0",
+    "@hocuspocus/server": "^2.15.0",
     "concurrently": "^9.1.2",
     "jsonwebtoken": "^9.0.2",
     "next": "^15.1.7",
     "prisma": "^6.4.1",
     "typescript": "^5.7.3",
     "vitest": "^3.0.7",
+    "yjs": "^13.6.23",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.5"
   },

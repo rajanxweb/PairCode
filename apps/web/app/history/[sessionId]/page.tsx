@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { DifficultyBadge, StatusBadge } from '@/components/Badge';
-import { ArrowLeft, Clock, Calendar, CheckCircle2, User, FileText, Loader2, Code2 } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, CheckCircle2, User, FileText, Loader2, Code2, Lock, Copy, Check } from 'lucide-react';
+import type { InterviewNoteContent } from '@paircode/shared';
 
 interface ReportData {
   id: string;
@@ -34,8 +35,10 @@ export default function HistoryReportPage() {
   const sessionId = params?.sessionId as string;
 
   const [report, setReport] = useState<ReportData | null>(null);
+  const [notes, setNotes] = useState<InterviewNoteContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function loadReport() {
@@ -44,6 +47,17 @@ export default function HistoryReportPage() {
         if (!res.ok) throw new Error('Interview report not found.');
         const data = await res.json();
         setReport(data.interview);
+
+        // If the viewer is the interviewer, load private notes
+        if (data.interview.role === 'INTERVIEWER') {
+          const notesRes = await fetch(`/api/interviews/${sessionId}/notes`);
+          if (notesRes.ok) {
+            const notesData = await notesRes.json();
+            if (notesData.note?.content) {
+              setNotes(notesData.note.content);
+            }
+          }
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to load report.');
       } finally {
@@ -52,6 +66,13 @@ export default function HistoryReportPage() {
     }
     if (sessionId) loadReport();
   }, [sessionId]);
+
+  function handleCopyCode() {
+    if (!report?.finalCode) return;
+    navigator.clipboard.writeText(report.finalCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   if (loading) {
     return (
@@ -119,7 +140,7 @@ export default function HistoryReportPage() {
               <span className="text-sm font-semibold text-foreground">{report.question.title}</span>
               <DifficultyBadge difficulty={report.question.difficulty} />
             </div>
-            <div className="text-xs text-muted line-clamp-3">
+            <div className="text-xs text-muted line-clamp-3 leading-relaxed">
               {report.question.statement}
             </div>
           </div>
@@ -128,20 +149,87 @@ export default function HistoryReportPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center gap-1.5">
-                <Code2 className="h-3.5 w-3.5 text-primary" /> Final Submitted Code
+                <Code2 className="h-3.5 w-3.5 text-primary" /> Final Candidate Code Snapshot
               </h2>
-              <span className="text-[11px] font-mono text-muted">
-                Language: {report.finalLanguage || 'python'}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-mono text-muted">
+                  Language: {report.finalLanguage || 'python'}
+                </span>
+                <button
+                  onClick={handleCopyCode}
+                  className="inline-flex items-center gap-1 text-[11px] text-muted hover:text-foreground"
+                >
+                  {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
             </div>
 
-            <div className="rounded border border-border bg-editor-background text-white p-4 font-mono text-xs overflow-x-auto max-h-[400px]">
-              <pre>{report.finalCode || '// No code submitted or saved during this session.'}</pre>
+            <div className="rounded border border-border bg-editor-background text-white p-4 font-mono text-xs overflow-x-auto max-h-[350px]">
+              <pre>{report.finalCode || '// No code was submitted or saved during this session.'}</pre>
             </div>
           </div>
+
+          {/* Private Interviewer Notes Section (Only visible to Interviewer) */}
+          {report.role === 'INTERVIEWER' && (
+            <div className="pt-4 border-t border-border space-y-4">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground">
+                <Lock className="h-3.5 w-3.5 text-primary" /> Private Interviewer Evaluation
+              </div>
+
+              {!notes ? (
+                <div className="rounded bg-surface-muted/50 p-4 text-xs text-muted text-center">
+                  No private feedback was recorded during this session.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  {notes.approach && (
+                    <div className="rounded border border-border bg-surface-muted/20 p-3 space-y-1">
+                      <span className="font-semibold text-muted text-[11px] uppercase tracking-wider">Problem-Solving Approach</span>
+                      <p className="text-foreground whitespace-pre-wrap">{notes.approach}</p>
+                    </div>
+                  )}
+
+                  {notes.technical && (
+                    <div className="rounded border border-border bg-surface-muted/20 p-3 space-y-1">
+                      <span className="font-semibold text-muted text-[11px] uppercase tracking-wider">Technical Understanding</span>
+                      <p className="text-foreground whitespace-pre-wrap">{notes.technical}</p>
+                    </div>
+                  )}
+
+                  {notes.communication && (
+                    <div className="rounded border border-border bg-surface-muted/20 p-3 space-y-1">
+                      <span className="font-semibold text-muted text-[11px] uppercase tracking-wider">Communication & Collaboration</span>
+                      <p className="text-foreground whitespace-pre-wrap">{notes.communication}</p>
+                    </div>
+                  )}
+
+                  {notes.strengths && (
+                    <div className="rounded border border-border bg-surface-muted/20 p-3 space-y-1">
+                      <span className="font-semibold text-muted text-[11px] uppercase tracking-wider">Key Strengths</span>
+                      <p className="text-foreground whitespace-pre-wrap">{notes.strengths}</p>
+                    </div>
+                  )}
+
+                  {notes.areasForImprovement && (
+                    <div className="rounded border border-border bg-surface-muted/20 p-3 space-y-1">
+                      <span className="font-semibold text-muted text-[11px] uppercase tracking-wider">Areas for Improvement</span>
+                      <p className="text-foreground whitespace-pre-wrap">{notes.areasForImprovement}</p>
+                    </div>
+                  )}
+
+                  {notes.overall && (
+                    <div className="rounded border border-primary/30 bg-primary/5 p-3 space-y-1">
+                      <span className="font-semibold text-primary text-[11px] uppercase tracking-wider">Overall Recommendation</span>
+                      <p className="text-foreground font-semibold text-sm">{notes.overall}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>
   );
 }
-
